@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import logo from './LUIGIA.png';
 import './App.css';
 import TextMessage from './Components/TextMessage';
+import TextAnswer from './Components/TextAnswer';
 
 function App() {
 
@@ -10,23 +11,39 @@ function App() {
   const [aiAnswerReady, setAIAnswerReady] = useState<string>("");
   const [questionToAI, setQuestionToAI] = useState<string>("");
 
- const doAction = () => {
+  const doAction = async () => {
     if (isLoading) {
-      //"STOP" mentre sta pensando
       setIsLoading(false);
-      setAIAnswerReady("");
-    } else {
-      // SEARCH
-      setIsLoading(true);
-      setAIAnswerReady("");
+      return;
+    }
 
-      // SIMULAZIONE CHIAMATA AI
-      setTimeout(() => {
-        setIsLoading(false);
-        setAIAnswerReady("Ecco quello che ho trovato per te..."); 
-      }, 2000);
+    if (!questionToAI.trim()) return;
+
+    setIsLoading(true);
+    setAIAnswerReady("");
+
+    try {
+      const response = await fetch('http://localhost:5001/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: questionToAI }),
+      });
+
+      const data = await response.json();
+
+      if (data.text) {
+        setAIAnswerReady(data.text);
+      } else {
+        throw new Error("Risposta vuota dal server");
+      }
+    } catch (error) {
+      console.error("Errore:", error);
+      setAIAnswerReady("Luigia ha riscontrato un errore nel server.");
+    } finally {
+      setIsLoading(false);
     }
   };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -49,11 +66,36 @@ function App() {
                   <span style={{ color: 'cyan' }}>Luigia</span> sta pensando...
                 </h2>
               ) : (
-                <h2>
-                  <span style={{ color: 'cyan' }}>Risposta</span>
-                </h2>
-              )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <h2>
+                    <span style={{ color: 'cyan' }}>Risposta</span> completata
+                  </h2>
 
+                  <TextAnswer text={aiAnswerReady} />
+
+                  <button
+                    onClick={() => {
+                      setAIAnswerReady("");
+                      setQuestionToAI("");
+                      setIsLoading(false);
+                    }}
+                    style={{
+                      marginTop: '15px',
+                      padding: '10px 25px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid cyan',
+                      color: 'cyan',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      transition: '0.3s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,255,255,0.1)'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    Nuova domanda
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
