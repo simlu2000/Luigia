@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import logo from './LUIGIA.png';
 import './App.css';
 import TextMessage from './Components/TextMessage';
@@ -10,6 +10,12 @@ function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [aiAnswerReady, setAIAnswerReady] = useState<string>("");
   const [questionToAI, setQuestionToAI] = useState<string>("");
+
+  useEffect(() => {
+    if (aiAnswerReady) {
+      console.log("La risposta è stata aggiornata nello stato:", aiAnswerReady);
+    }
+  }, [aiAnswerReady]);
 
   const doAction = async () => {
     if (isLoading) {
@@ -29,16 +35,26 @@ function App() {
         body: JSON.stringify({ prompt: questionToAI }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Errore HTTP:", errorText);
+        throw new Error(`Errore server: ${response.status}`);
+      }
+
       const data = await response.json();
 
-      if (data.text) {
-        setAIAnswerReady(data.text);
+      const text = data?.text;
+
+      if (text && text.trim() !== "") {
+        setAIAnswerReady(text);
       } else {
+        console.error("Risposta server:", data);
         throw new Error("Risposta vuota dal server");
       }
+
     } catch (error) {
       console.error("Errore:", error);
-      setAIAnswerReady("Luigia ha riscontrato un errore nel server.");
+      setAIAnswerReady("Luigia ha avuto un problema 😢 Riprova.");
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +165,7 @@ function App() {
               cursor: questionToAI.trim() ? 'pointer' : 'not-allowed',
               transition: '0.3s'
             }}
-            disabled={!questionToAI.trim() && !isLoading}
+            disabled={!questionToAI.trim() || isLoading}
             onClick={doAction}
           >
             {isLoading ? 'Stop' : 'Search'}
